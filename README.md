@@ -70,7 +70,7 @@ This project demonstrates the following production ML engineering skills:
 
 ```bash
 # 1. Clone and enter the project
-git clone <repo-url> && cd rag-qa-system
+git clone https://github.com/NNtorvas/RAG-QA-SYSTEM.git && cd RAG-QA-SYSTEM
 
 # 2. Set your API key
 export ANTHROPIC_API_KEY=sk-ant-...
