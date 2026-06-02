@@ -1,0 +1,30 @@
+# Core LLM / RAG
+langchain==0.3.25
+langchain-anthropic==0.3.15
+langchain-community==0.3.24
+langchain-text-splitters==0.3.8
+
+# Embeddings (local, no API key)
+sentence-transformers==3.4.1
+
+# Vector store
+chromadb==0.6.3
+
+# PDF loading
+pypdf==5.4.0
+
+# API server
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+
+# Frontend (install separately in frontend container)
+streamlit==1.45.1
+requests==2.32.3
+
+# Evals
+ragas==0.2.15
+datasets==3.6.0
+
+# Utilities
+pydantic==2.11.4
