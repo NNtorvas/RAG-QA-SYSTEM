@@ -25,6 +25,7 @@ requests==2.32.3
 # Evals
 ragas==0.2.15
 datasets==3.6.0
+langchain-huggingface==0.1.2
 
 # Utilities
 pydantic==2.11.4

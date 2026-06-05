@@ -4,33 +4,68 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-**Backend (run from `backend/`)**
+All common operations are available via `make`. Run `make help` to see the full list.
+
+**First-time setup (after cloning)**
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... uvicorn main:app --reload --port 8000
+make install    # pip install -r requirements.txt -r requirements-dev.txt
+make hooks      # install pre-commit + pre-push hooks
 ```
 
-**Frontend (run from `frontend/`)**
+**Run the project locally**
 ```bash
-BACKEND_URL=http://localhost:8000 streamlit run app.py
+# Terminal 1
+ANTHROPIC_API_KEY=sk-ant-... make backend    # FastAPI on :8000
+
+# Terminal 2
+make frontend                                # Streamlit on :8501
 ```
 
-**Docker (run from repo root)**
+**Docker (full stack)**
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... docker compose up --build
+ANTHROPIC_API_KEY=sk-ant-... make up        # build + start both services
+make down                                   # stop
 ```
 
-**Evals (run from repo root, backend must be running)**
+**Tests**
 ```bash
-# Fast — keyword match only, no API calls
-python evals/run_evals.py --backend http://localhost:8000 --skip-ragas
-
-# Full — includes Ragas context precision/recall + faithfulness
-ANTHROPIC_API_KEY=sk-ant-... python evals/run_evals.py --backend http://localhost:8000
+make test             # full suite + coverage (min 70%)
+make test-unit        # unit tests only (fast, no deps)
+make test-integration # integration tests only
 ```
 
-**Install dependencies**
+**Code quality**
 ```bash
-pip install -r requirements.txt
+make format   # auto-format with Black
+make lint     # Flake8
+make check    # black --check + flake8 (same as CD pipeline)
+```
+
+**Evals (backend must be running)**
+```bash
+make evals        # keyword-match only, no API calls
+make evals-full   # full Ragas metrics (requires ANTHROPIC_API_KEY)
+```
+
+**Other**
+```bash
+make version  # print current __version__
+make clean    # remove __pycache__, .pytest_cache, coverage files
+```
+
+Raw commands (when make is not available):
+```bash
+# Backend
+cd backend && uvicorn main:app --reload --port 8000
+
+# Frontend
+cd frontend && streamlit run app.py
+
+# Tests
+pytest tests/ -v --cov=backend --cov-report=term-missing
+
+# Docker
+docker compose up --build
 ```
 
 ## Architecture
@@ -61,13 +96,92 @@ frontend/app.py  →  POST /ingest, POST /query  →  backend/main.py
 - **ChromaDB stores cosine distances** (not similarities). `retrieval.py` converts: `similarity = 1 - distance`.
 - **Chunk IDs are deterministic**: `md5(source:chunk_index:text[:80])`. Re-ingesting the same PDF upserts rather than duplicates.
 
+## Testing
+
+Tests live in `tests/` and are split into two layers:
+
+```
+tests/
+  unit/
+    test_ingestion.py   ← _doc_id, embedder/collection singletons, ingest_pdf branches
+    test_retrieval.py   ← format_context, retrieve_chunks, answer_query all paths
+  integration/
+    test_api.py         ← all API endpoints via FastAPI TestClient
+```
+
+- Unit tests mock all external dependencies (ChromaDB, SentenceTransformer, LangChain, LLM).
+- Integration tests mock only `ingest_pdf` and `answer_query` — they test the API routing, validation, and error handling against the real FastAPI app.
+- `pythonpath = ["backend"]` in `pyproject.toml` adds `backend/` to sys.path automatically — no `conftest.py` path hacks needed.
+- Run `ANTHROPIC_API_KEY=dummy make test` when the API key is not set — tests do not make real API calls.
+
+## Code Quality
+
+Config is centralised in `pyproject.toml` (`[tool.black]`, `[tool.flake8]`, `[tool.pytest.ini_options]`).
+
+**Pre-commit hooks** (run on every `git commit`):
+- trailing-whitespace, end-of-file-fixer, check-yaml, check-added-large-files
+- Black auto-formats Python files
+- Flake8 lints (requires `flake8-pyproject` to read `pyproject.toml`)
+**Pre-push hook** (runs on `git push`):
+- `scripts/check_version_bump.py` — compares `backend/__version__.py` against the latest git tag and fails if the version was not bumped.
+
+Install hooks once after cloning: `make hooks`
+
+## Versioning
+
+The project version lives in `backend/__version__.py`:
+```python
+__version__ = "0.1.0"
+```
+
+Bump this file before every push to `main`. The pre-push hook will reject the push if the version hasn't changed. The CD pipeline uses this value to create an annotated git tag and to tag Docker images.
+
+## CI/CD
+
+**CD pipeline** (`.github/workflows/`):
+
+Triggers on every push to `main` (and manually via `workflow_dispatch`).
+
+```
+cd.yml  →  _prep.yml              →  _build-push.yml
+           • extract version          • login to GHCR
+           • validate semver bump     • build backend image
+           • create annotated tag     • build frontend image
+                                      • push both (SHA + version + latest tags)
+```
+
+Images are pushed to `ghcr.io/<owner>/rag-qa-system-{backend,frontend}`.
+No extra secrets are needed — the CD uses `GITHUB_TOKEN` for GHCR authentication.
+
 ## Environment Variables
 
 | Variable | Required | Default |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Yes | — |
+| `ANTHROPIC_API_KEY` | Yes (RAG pipeline) | — |
+| `HUGGINGFACE_API_KEY` | Only for `make evals-full --eval-llm huggingface` | — |
 | `CHROMA_DB_PATH` | No | `./chroma_db` |
 
 ## Eval Pairs
 
 `evals/eval_pairs.py` contains 20 Q&A pairs written for **"Attention Is All You Need" (Vaswani et al., 2017)**. Each pair has `expected_keywords` (a list of strings) used for keyword-hit detection — not exact-match. If you change the target document, replace the pairs and keywords in that file; the eval runner in `run_evals.py` is document-agnostic.
+
+## Security Constraints
+
+- Never include actual API keys, tokens, or credentials in examples
+- Use placeholder values like `YOUR_API_KEY_HERE` in configuration samples
+- Never demonstrate permission configurations that bypass security controls
+
+## Claude Code Plugin Setup
+
+This project uses Claude Code plugins defined in `.claude/settings.json`. Plugins are enabled per-project but must be **installed once per machine**. After cloning, run:
+
+```bash
+for p in superpowers context7 code-simplifier skill-creator claude-code-setup security-guidance; do
+  claude plugin install "$p@claude-plugins-official"
+done
+```
+
+## Key Claude Behaviour
+
+- Don't always agree with me. Be blunt and always propose the best solution in terms of complexity, maintainability and performance.
+- Be direct and correct me if I make wrong assumptions or give you wrong information.

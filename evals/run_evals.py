@@ -3,20 +3,26 @@ RAG evaluation script using Ragas.
 Runs 20 hardcoded Q&A pairs and outputs a markdown results table.
 
 Usage:
+    # keyword-only (no LLM needed)
+    python evals/run_evals.py --backend http://localhost:8000 --skip-ragas
+
+    # Ragas metrics via Anthropic
     ANTHROPIC_API_KEY=... python evals/run_evals.py --backend http://localhost:8000
+
+    # Ragas metrics via HuggingFace Inference API (free)
+    HUGGINGFACE_API_KEY=... python evals/run_evals.py --backend http://localhost:8000 --eval-llm huggingface
 """
+
 import argparse
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
-
 import requests
 from datasets import Dataset
-from ragas import evaluate
-from ragas.metrics import answer_faithfulness, context_recall, context_precision
 
-from eval_pairs import EVAL_PAIRS
+sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+
+from eval_pairs import EVAL_PAIRS  # noqa: E402
 
 
 def call_backend(backend_url: str, question: str) -> dict:
@@ -45,6 +51,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", default="http://localhost:8000")
     parser.add_argument("--skip-ragas", action="store_true", help="Skip Ragas metrics, keyword-only")
+    parser.add_argument(
+        "--eval-llm",
+        choices=["anthropic", "huggingface"],
+        default="anthropic",
+        help="LLM provider for Ragas scoring (default: anthropic)",
+    )
     args = parser.parse_args()
 
     print(f"Running {len(EVAL_PAIRS)} eval pairs against {args.backend}\n")
@@ -95,13 +107,22 @@ def main():
         print(f"  [{qid}] {status}")
 
     # ── Markdown table ─────────────────────────────────────────────────────────
-    header = "| ID   | Question (truncated)                                           | Retrieval | KW Match | Hallucination | Result |"
-    sep    = "|------|----------------------------------------------------------------|-----------|----------|---------------|--------|"
+    header = (
+        "| ID   | Question (truncated)                                           "
+        "| Retrieval | KW Match | Hallucination | Result |"
+    )
+    sep = (
+        "|------|----------------------------------------------------------------"
+        "|-----------|----------|---------------|--------|"
+    )
     print("\n## Eval Results\n")
     print(header)
     print(sep)
     for r in rows:
-        print(f"| {r['id']} | {r['question']:<62} | {r['retrieval']:<9} | {r['kw_match']:<8} | {r['hallucination']:<13} | {r['status']} |")
+        print(
+            f"| {r['id']} | {r['question']:<62} | {r['retrieval']:<9} "
+            f"| {r['kw_match']:<8} | {r['hallucination']:<13} | {r['status']} |"
+        )
 
     passed = sum(1 for r in rows if r["status"] == "PASS")
     print(f"\n**Summary:** {passed}/{len(rows)} passed")
@@ -109,15 +130,44 @@ def main():
     # ── Ragas metrics ──────────────────────────────────────────────────────────
     if not args.skip_ragas:
         try:
-            print("\nRunning Ragas metrics (requires ANTHROPIC_API_KEY)…")
+            import os
+
+            from ragas import evaluate
+            from ragas.llms import LangchainLLMWrapper
+            from ragas.metrics import context_precision, context_recall, faithfulness
+
+            if args.eval_llm == "huggingface":
+                from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+
+                hf_token = os.getenv("HUGGINGFACE_API_KEY")
+                if not hf_token:
+                    raise EnvironmentError("HUGGINGFACE_API_KEY is not set.")
+                endpoint = HuggingFaceEndpoint(
+                    repo_id="mistralai/Mistral-7B-Instruct-v0.3",
+                    huggingfacehub_api_token=hf_token,
+                )
+                ragas_llm = LangchainLLMWrapper(ChatHuggingFace(llm=endpoint))
+                print("\nRunning Ragas metrics via HuggingFace (Mistral-7B)…")
+            else:
+                from langchain_anthropic import ChatAnthropic
+
+                anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+                if not anthropic_key:
+                    raise EnvironmentError("ANTHROPIC_API_KEY is not set.")
+                ragas_llm = LangchainLLMWrapper(
+                    ChatAnthropic(model="claude-haiku-4-5-20251001", anthropic_api_key=anthropic_key)
+                )
+                print("\nRunning Ragas metrics via Anthropic (claude-haiku)…")
+
             dataset = build_ragas_dataset(ragas_input)
             result = evaluate(
                 dataset,
-                metrics=[context_precision, context_recall, answer_faithfulness],
+                metrics=[context_precision, context_recall, faithfulness],
+                llm=ragas_llm,
             )
             print("\n## Ragas Scores\n")
-            print(f"| Metric               | Score  |")
-            print(f"|----------------------|--------|")
+            print("| Metric               | Score  |")
+            print("|----------------------|--------|")
             for metric, score in result.items():
                 print(f"| {metric:<20} | {score:.4f} |")
         except Exception as exc:
