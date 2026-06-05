@@ -27,17 +27,17 @@ jobs:
       frontend_image: ${{ steps.refs.outputs.frontend }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Set versioned image references
         id: refs
@@ -53,7 +53,7 @@ jobs:
 
       - name: Backend — extract metadata
         id: meta-backend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/rag-qa-system-backend
           tags: |
@@ -62,7 +62,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Backend — build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.backend
@@ -84,6 +84,7 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: 1
+          trivy-flags: --skip-version-check
 
       - name: Backend — upload SARIF to GitHub Security
         if: always()
@@ -96,7 +97,7 @@ jobs:
 
       - name: Frontend — extract metadata
         id: meta-frontend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/rag-qa-system-frontend
           tags: |
@@ -105,7 +106,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Frontend — build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.frontend
@@ -127,6 +128,7 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: 1
+          trivy-flags: --skip-version-check
 
       - name: Frontend — upload SARIF to GitHub Security
         if: always()
