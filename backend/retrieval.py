@@ -42,9 +42,12 @@ def retrieve_chunks(query: str) -> list[Document]:
     query_embedding = embedder.encode([query], show_progress_bar=False).tolist()[0]
 
     collection = get_collection()
+    count = collection.count()
+    if count == 0:
+        return []
     results = collection.query(
         query_embeddings=[query_embedding],
-        n_results=min(TOP_K_RESULTS, collection.count()),
+        n_results=min(TOP_K_RESULTS, count),
         include=["documents", "metadatas", "distances"],
     )
 
