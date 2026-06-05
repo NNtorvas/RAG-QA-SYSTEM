@@ -73,7 +73,7 @@ jobs:
           cache-to: type=registry,ref=${{ steps.refs.outputs.backend_cache }},mode=max,image-manifest=true,oci-mediatypes=true
 
       - name: Backend — Trivy CVE scan
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: ${{ steps.refs.outputs.backend }}
           format: sarif
@@ -114,7 +114,7 @@ jobs:
           cache-to: type=registry,ref=${{ steps.refs.outputs.frontend_cache }},mode=max,image-manifest=true,oci-mediatypes=true
 
       - name: Frontend — Trivy CVE scan
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: ${{ steps.refs.outputs.frontend }}
           format: sarif
