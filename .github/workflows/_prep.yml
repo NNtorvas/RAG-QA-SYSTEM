@@ -30,7 +30,8 @@ jobs:
       - name: Validate semver bump against latest tag
         run: |
           CURR=${{ steps.extract.outputs.version }}
-          PREV=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          PREV="${PREV_TAG#v}"
           python -c "
           import sys
           curr = tuple(int(x) for x in '${CURR}'.split('.'))
