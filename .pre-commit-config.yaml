@@ -29,6 +29,8 @@ repos:
     hooks:
       - id: pip-audit
         args: ["-r", "requirements.txt"]
+        stages: [pre-push]
+        files: ^requirements\.txt$
 
   # ── Version gate (runs on push, not on every commit) ────────────────────────
   - repo: local
