@@ -48,7 +48,7 @@ def main() -> int:
         )
         return 1
 
-    print(f"[version-gate] OK: {remote} → {local}")
+    print(f"[version-gate] OK: {remote} -> {local}")
     return 0
 
 
