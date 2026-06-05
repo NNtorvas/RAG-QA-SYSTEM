@@ -1,0 +1,131 @@
+name: _build-push
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+    outputs:
+      backend_image:
+        description: "Fully qualified backend image (tag=version)"
+        value: ${{ jobs.build.outputs.backend_image }}
+      frontend_image:
+        description: "Fully qualified frontend image (tag=version)"
+        value: ${{ jobs.build.outputs.frontend_image }}
+
+jobs:
+  build:
+    name: Build, push & scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    outputs:
+      backend_image: ${{ steps.refs.outputs.backend }}
+      frontend_image: ${{ steps.refs.outputs.frontend }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set versioned image references
+        id: refs
+        run: |
+          BASE="ghcr.io/${{ github.repository_owner }}/rag-qa-system"
+          echo "backend=${BASE}-backend:${{ inputs.version }}" >> $GITHUB_OUTPUT
+          echo "frontend=${BASE}-frontend:${{ inputs.version }}" >> $GITHUB_OUTPUT
+          echo "backend_cache=${BASE}-backend:buildcache" >> $GITHUB_OUTPUT
+          echo "frontend_cache=${BASE}-frontend:buildcache" >> $GITHUB_OUTPUT
+
+      # ── Backend ─────────────────────────────────────────────────────────────
+
+      - name: Backend — extract metadata
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/rag-qa-system-backend
+          tags: |
+            type=raw,value=${{ inputs.version }}
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Backend — build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          provenance: false
+          cache-from: type=registry,ref=${{ steps.refs.outputs.backend_cache }}
+          cache-to: type=registry,ref=${{ steps.refs.outputs.backend_cache }},mode=max,image-manifest=true,oci-mediatypes=true
+
+      - name: Backend — Trivy CVE scan
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: ${{ steps.refs.outputs.backend }}
+          format: sarif
+          output: trivy-backend.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
+
+      - name: Backend — upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-backend.sarif
+          category: trivy-backend
+
+      # ── Frontend ────────────────────────────────────────────────────────────
+
+      - name: Frontend — extract metadata
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/rag-qa-system-frontend
+          tags: |
+            type=raw,value=${{ inputs.version }}
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Frontend — build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          provenance: false
+          cache-from: type=registry,ref=${{ steps.refs.outputs.frontend_cache }}
+          cache-to: type=registry,ref=${{ steps.refs.outputs.frontend_cache }},mode=max,image-manifest=true,oci-mediatypes=true
+
+      - name: Frontend — Trivy CVE scan
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: ${{ steps.refs.outputs.frontend }}
+          format: sarif
+          output: trivy-frontend.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
+
+      - name: Frontend — upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: trivy-frontend

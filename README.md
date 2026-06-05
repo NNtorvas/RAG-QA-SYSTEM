@@ -62,6 +62,9 @@ This project demonstrates the following production ML engineering skills:
 | **Frontend** | Streamlit two-panel UI (chat + cited sources) — usable without any frontend framework knowledge |
 | **Evaluation mindset** | `evals/` folder with 20 Q&A pairs, keyword-match retrieval check, hallucination flag, and Ragas metrics |
 | **Containerization** | Multi-service Docker Compose with volume persistence, health checks, and env-variable secrets |
+| **Testing** | 21-test suite across unit and integration layers; all external dependencies mocked |
+| **CI/CD** | 3-layer GitHub Actions CD pipeline: semver gate → Docker build → GHCR push → Trivy CVE scan |
+| **Code quality** | pre-commit hooks (Black, Flake8, pip-audit), pyproject.toml central config, coverage enforcement |
 | **Error handling** | Graceful fallbacks at both retrieval and LLM layers; clear error messages to the user |
 
 ---
@@ -69,16 +72,15 @@ This project demonstrates the following production ML engineering skills:
 ## Quickstart (Docker)
 
 ```bash
-# 1. Clone and enter the project
+# 1. Clone
 git clone https://github.com/NNtorvas/RAG-QA-SYSTEM.git && cd RAG-QA-SYSTEM
 
-# 2. Set your API key
-export ANTHROPIC_API_KEY=sk-ant-...
+# 2. Build and start
+ANTHROPIC_API_KEY=sk-ant-... make up
+# or without make:
+# ANTHROPIC_API_KEY=sk-ant-... docker compose up --build
 
-# 3. Build and start
-docker compose up --build
-
-# 4. Open the UI
+# 3. Open the UI
 open http://localhost:8501
 ```
 
@@ -89,17 +91,39 @@ Upload a PDF in the sidebar, wait for ingestion, then ask questions.
 ## Quickstart (local dev)
 
 ```bash
-# Python 3.11+ recommended
-pip install -r requirements.txt
+# 1. Install dependencies and hooks
+make install
+make hooks
 
-# Terminal 1 — backend
-cd backend
-ANTHROPIC_API_KEY=sk-ant-... uvicorn main:app --reload
+# 2. Terminal 1 — backend
+ANTHROPIC_API_KEY=sk-ant-... make backend
 
-# Terminal 2 — frontend
-cd frontend
-BACKEND_URL=http://localhost:8000 streamlit run app.py
+# 3. Terminal 2 — frontend
+make frontend
 ```
+
+---
+
+## Testing
+
+```bash
+make test             # full suite with coverage report (min 70%)
+make test-unit        # unit tests only — fast, no external deps
+make test-integration # API-level tests via FastAPI TestClient
+```
+
+Tests do not call the Anthropic API or load the embedding model. All external services are mocked.
+
+---
+
+## Code Quality
+
+```bash
+make format   # auto-format with Black
+make check    # black --check + flake8 (same checks as CD pipeline)
+```
+
+Pre-commit hooks run automatically on `git commit` (formatting, linting, CVE scan) and on `git push` (version bump check). Install them once with `make hooks`.
 
 ---
 
@@ -108,11 +132,8 @@ BACKEND_URL=http://localhost:8000 streamlit run app.py
 The eval script targets "Attention Is All You Need" (Vaswani et al., 2017). Ingest the paper first, then:
 
 ```bash
-# Keyword-only (fast, no extra API calls)
-python evals/run_evals.py --backend http://localhost:8000 --skip-ragas
-
-# Full Ragas metrics (context precision/recall + faithfulness)
-ANTHROPIC_API_KEY=sk-ant-... python evals/run_evals.py --backend http://localhost:8000
+make evals        # keyword-only (fast, no extra API calls)
+make evals-full   # full Ragas metrics (requires ANTHROPIC_API_KEY + backend running)
 ```
 
 ### Example output
@@ -141,6 +162,9 @@ ANTHROPIC_API_KEY=sk-ant-... python evals/run_evals.py --backend http://localhos
 ---
 
 ## API Reference
+
+### `GET /health`
+Returns `{"status": "ok"}`. Used by Docker health check.
 
 ### `POST /ingest`
 Upload a PDF for processing.
@@ -196,18 +220,36 @@ All configuration lives in `backend/config.py` and is overridable via environmen
 ```
 rag-qa-system/
 ├── backend/
-│   ├── main.py         # FastAPI routes (/ingest, /query, /health)
-│   ├── ingestion.py    # PDF → chunks → embeddings → ChromaDB
-│   ├── retrieval.py    # ChromaDB search + LangChain RAG chain
-│   └── config.py       # Settings from env vars
+│   ├── main.py             # FastAPI routes (/ingest, /query, /health)
+│   ├── ingestion.py        # PDF → chunks → embeddings → ChromaDB
+│   ├── retrieval.py        # ChromaDB search + LangChain RAG chain
+│   ├── config.py           # Settings from env vars
+│   └── __version__.py      # Single source of truth for project version
 ├── frontend/
-│   └── app.py          # Streamlit UI (chat + source panel)
+│   └── app.py              # Streamlit UI (chat + source panel)
+├── tests/
+│   ├── unit/
+│   │   ├── test_ingestion.py   # _doc_id, singletons, ingest_pdf branches
+│   │   └── test_retrieval.py   # format_context, retrieve_chunks, answer_query
+│   └── integration/
+│       └── test_api.py         # all endpoints via FastAPI TestClient
 ├── evals/
-│   ├── eval_pairs.py   # 20 hardcoded Q&A pairs
-│   └── run_evals.py    # Ragas eval runner
+│   ├── eval_pairs.py       # 20 hardcoded Q&A pairs
+│   └── run_evals.py        # Ragas eval runner
 ├── docker/
 │   ├── Dockerfile.backend
 │   └── Dockerfile.frontend
-├── docker-compose.yml
-└── requirements.txt
+├── scripts/
+│   └── check_version_bump.py   # pre-push hook: validates semver increment
+├── .github/
+│   └── workflows/
+│       ├── cd.yml              # CD entry point (push to main)
+│       ├── _prep.yml           # reusable: version validation + git tag
+│       └── _build-push.yml     # reusable: Docker build + GHCR push + Trivy
+├── Makefile                # developer task runner (make help)
+├── pyproject.toml          # Black + Flake8 + pytest config
+├── .pre-commit-config.yaml # commit/push quality gates
+├── requirements.txt        # runtime dependencies
+├── requirements-dev.txt    # dev/test dependencies
+└── docker-compose.yml
 ```
