@@ -42,7 +42,8 @@ jobs:
       - name: Set versioned image references
         id: refs
         run: |
-          BASE="ghcr.io/${{ github.repository_owner }}/rag-qa-system"
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          BASE="ghcr.io/${OWNER}/rag-qa-system"
           echo "backend=${BASE}-backend:${{ inputs.version }}" >> $GITHUB_OUTPUT
           echo "frontend=${BASE}-frontend:${{ inputs.version }}" >> $GITHUB_OUTPUT
           echo "backend_cache=${BASE}-backend:buildcache" >> $GITHUB_OUTPUT
@@ -84,7 +85,7 @@ jobs:
 
       - name: Backend — upload SARIF to GitHub Security
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-backend.sarif
           category: trivy-backend
@@ -125,7 +126,7 @@ jobs:
 
       - name: Frontend — upload SARIF to GitHub Security
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-frontend.sarif
           category: trivy-frontend
