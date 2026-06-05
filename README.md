@@ -48,9 +48,7 @@ A production-ready Retrieval-Augmented Generation (RAG) pipeline that answers qu
 
 ## What This Proves
 
-> **For recruiters and hiring managers**
-
-This project demonstrates the following production ML engineering skills:
+This project demonstrates the following production AI/ML engineering skills:
 
 | Skill | Where demonstrated |
 |---|---|
