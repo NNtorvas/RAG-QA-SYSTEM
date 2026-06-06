@@ -150,8 +150,6 @@ cd.yml  →  _prep.yml              →  _build-push.yml
            • validate semver bump     • build backend image
            • create annotated tag     • build frontend image
                                       • push both (SHA + version + latest tags)
-                                      • Trivy CVE scan (CRITICAL/HIGH, --ignore-unfixed)
-                                      • upload SARIF to GitHub Security tab
 ```
 
 Images are pushed to `ghcr.io/<owner>/rag-qa-system-{backend,frontend}`.

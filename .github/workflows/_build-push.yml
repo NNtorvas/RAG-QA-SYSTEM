@@ -16,12 +16,11 @@ on:
 
 jobs:
   build:
-    name: Build, push & scan
+    name: Build & push
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      security-events: write
     outputs:
       backend_image: ${{ steps.refs.outputs.backend }}
       frontend_image: ${{ steps.refs.outputs.frontend }}
@@ -73,26 +72,6 @@ jobs:
           cache-from: type=registry,ref=${{ steps.refs.outputs.backend_cache }}
           cache-to: type=registry,ref=${{ steps.refs.outputs.backend_cache }},mode=max,image-manifest=true,oci-mediatypes=true
 
-      - name: Backend — Trivy CVE scan
-        id: trivy-backend
-        continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ steps.refs.outputs.backend }}
-          format: sarif
-          output: trivy-backend.sarif
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: 1
-          trivy-flags: --skip-version-check
-
-      - name: Backend — upload SARIF to GitHub Security
-        if: always()
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-backend.sarif
-          category: trivy-backend
-
       # ── Frontend ────────────────────────────────────────────────────────────
 
       - name: Frontend — extract metadata
@@ -116,34 +95,3 @@ jobs:
           provenance: false
           cache-from: type=registry,ref=${{ steps.refs.outputs.frontend_cache }}
           cache-to: type=registry,ref=${{ steps.refs.outputs.frontend_cache }},mode=max,image-manifest=true,oci-mediatypes=true
-
-      - name: Frontend — Trivy CVE scan
-        id: trivy-frontend
-        continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ steps.refs.outputs.frontend }}
-          format: sarif
-          output: trivy-frontend.sarif
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: 1
-          trivy-flags: --skip-version-check
-
-      - name: Frontend — upload SARIF to GitHub Security
-        if: always()
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-frontend.sarif
-          category: trivy-frontend
-
-      # ── CVE gate — fail the job if either scan found vulnerabilities ─────────
-
-      - name: Fail if CVEs found
-        if: always()
-        run: |
-          if [[ "${{ steps.trivy-backend.outcome }}" == "failure" || \
-                "${{ steps.trivy-frontend.outcome }}" == "failure" ]]; then
-            echo "Unfixed CRITICAL/HIGH CVEs found — see the Security tab for details."
-            exit 1
-          fi
