@@ -1,7 +1,6 @@
 import retrieval as retrieval_module
 from unittest.mock import MagicMock, patch
 
-import pytest
 from langchain.schema import Document
 
 
@@ -18,6 +17,7 @@ def _make_doc(content="some text", source="doc.pdf", page="1", chunk_index="0", 
 
 
 # ── format_context ─────────────────────────────────────────────────────────────
+
 
 def test_format_context_empty_list():
     from retrieval import format_context
@@ -57,6 +57,7 @@ def test_format_context_missing_metadata_uses_defaults():
 
 
 # ── retrieve_chunks ────────────────────────────────────────────────────────────
+
 
 def test_retrieve_chunks_returns_empty_when_collection_is_empty():
     from retrieval import retrieve_chunks
@@ -123,6 +124,7 @@ def test_retrieve_chunks_similarity_is_one_minus_distance():
 
 
 # ── answer_query ───────────────────────────────────────────────────────────────
+
 
 def test_answer_query_returns_no_documents_message_when_collection_empty():
     from retrieval import answer_query

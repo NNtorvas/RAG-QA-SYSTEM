@@ -13,6 +13,7 @@ def client():
 
 # ── Health ─────────────────────────────────────────────────────────────────────
 
+
 def test_health_returns_ok(client):
     r = client.get("/health")
     assert r.status_code == 200
@@ -20,6 +21,7 @@ def test_health_returns_ok(client):
 
 
 # ── POST /ingest ───────────────────────────────────────────────────────────────
+
 
 def test_ingest_rejects_non_pdf_file(client):
     r = client.post("/ingest", files={"file": ("notes.txt", b"hello", "text/plain")})
@@ -75,6 +77,7 @@ def test_ingest_propagates_ingest_pdf_error(client, tmp_path):
 
 
 # ── POST /query ────────────────────────────────────────────────────────────────
+
 
 def test_query_rejects_empty_question(client):
     r = client.post("/query", json={"question": ""})
