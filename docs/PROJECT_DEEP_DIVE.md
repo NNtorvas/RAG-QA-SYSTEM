@@ -792,15 +792,15 @@ take time. That's why `--skip-ragas` exists for quick checks.
 # docker-compose.yml
 services:
   backend:
-    build: { dockerfile: docker/Dockerfile.backend }
-    ports: ["8000:8000"]
+    build: { dockerfile: ../docker/Dockerfile.backend }
+    ports: [ "8000:8000" ]
     volumes:
       - chroma_data:/data/chroma_db    # persists the vector database
       - upload_data:/app/uploads        # persists uploaded PDFs
 
   frontend:
-    build: { dockerfile: docker/Dockerfile.frontend }
-    ports: ["8501:8501"]
+    build: { dockerfile: ../docker/Dockerfile.frontend }
+    ports: [ "8501:8501" ]
     depends_on:
       backend:
         condition: service_healthy     # waits for backend to be ready

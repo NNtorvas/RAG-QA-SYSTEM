@@ -18,6 +18,5 @@ jobs:
       version: ${{ needs.prepare.outputs.version }}
     secrets: inherit
     permissions:
-      contents: read          # allow checkout inside the called workflow
-      packages: write         # push to GHCR
-      security-events: write  # upload Trivy SARIF to GitHub Security tab
+      contents: read   # allow checkout inside the called workflow
+      packages: write  # push to GHCR

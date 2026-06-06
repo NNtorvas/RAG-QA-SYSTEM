@@ -21,9 +21,7 @@ Question: {question}
 
 Answer using only the context above. Include citations like [source.pdf, page N] inline."""
 
-_prompt = ChatPromptTemplate.from_messages(
-    [("system", SYSTEM_PROMPT), ("human", HUMAN_PROMPT)]
-)
+_prompt = ChatPromptTemplate.from_messages([("system", SYSTEM_PROMPT), ("human", HUMAN_PROMPT)])
 
 
 def _get_llm() -> ChatAnthropic:
@@ -90,9 +88,9 @@ def answer_query(question: str) -> dict[str, Any]:
         }
 
     context = format_context(docs)
-    chain = _prompt | _get_llm()
 
     try:
+        chain = _prompt | _get_llm()
         response = chain.invoke({"context": context, "question": question})
         answer_text = response.content
     except Exception as exc:

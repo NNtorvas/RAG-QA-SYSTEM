@@ -60,8 +60,8 @@ This project demonstrates the following production AI/ML engineering skills:
 | **Frontend** | Streamlit two-panel UI (chat + cited sources) — usable without any frontend framework knowledge |
 | **Evaluation mindset** | `evals/` folder with 20 Q&A pairs, keyword-match retrieval check, hallucination flag, and Ragas metrics |
 | **Containerization** | Multi-service Docker Compose with volume persistence, health checks, and env-variable secrets |
-| **Testing** | 21-test suite across unit and integration layers; all external dependencies mocked |
-| **CI/CD** | 3-layer GitHub Actions CD pipeline: semver gate → Docker build → GHCR push → Trivy CVE scan |
+| **Testing** | 34-test suite across unit and integration layers; all external dependencies mocked |
+| **CI/CD** | 3-layer GitHub Actions CD pipeline: semver gate → Docker build → GHCR push |
 | **Code quality** | pre-commit hooks (Black, Flake8, pip-audit), pyproject.toml central config, coverage enforcement |
 | **Error handling** | Graceful fallbacks at both retrieval and LLM layers; clear error messages to the user |
 
@@ -154,7 +154,7 @@ make evals-full   # full Ragas metrics (requires ANTHROPIC_API_KEY + backend run
 |----------------------|--------|
 | context_precision    | 0.8750 |
 | context_recall       | 0.8100 |
-| answer_faithfulness  | 0.9200 |
+| faithfulness         | 0.9200 |
 ```
 
 ---
@@ -243,7 +243,7 @@ rag-qa-system/
 │   └── workflows/
 │       ├── cd.yml              # CD entry point (push to main)
 │       ├── _prep.yml           # reusable: version validation + git tag
-│       └── _build-push.yml     # reusable: Docker build + GHCR push + Trivy
+│       └── _build-push.yml     # reusable: Docker build + GHCR push
 ├── Makefile                # developer task runner (make help)
 ├── pyproject.toml          # Black + Flake8 + pytest config
 ├── .pre-commit-config.yaml # commit/push quality gates

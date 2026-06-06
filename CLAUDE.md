@@ -159,7 +159,8 @@ No extra secrets are needed — the CD uses `GITHUB_TOKEN` for GHCR authenticati
 
 | Variable | Required | Default |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Yes | — |
+| `ANTHROPIC_API_KEY` | Yes (RAG pipeline) | — |
+| `HUGGINGFACE_API_KEY` | Only for `make evals-full --eval-llm huggingface` | — |
 | `CHROMA_DB_PATH` | No | `./chroma_db` |
 
 ## Eval Pairs

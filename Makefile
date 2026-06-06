@@ -1,11 +1,13 @@
 .DEFAULT_GOAL := help
 
 # ── Variables ──────────────────────────────────────────────────────────────────
-PYTHON   := python
-PYTEST   := $(PYTHON) -m pytest
-PIP      := $(PYTHON) -m pip
-BLACK    := $(PYTHON) -m black
-FLAKE8   := $(PYTHON) -m flake8
+VENV          := .venv
+SYSTEM_PYTHON := $(shell command -v python3.12 2>/dev/null || command -v python3.13 2>/dev/null || command -v python3.11 2>/dev/null || command -v python3 2>/dev/null || command -v python 2>/dev/null)
+PYTHON        := $(VENV)/bin/python3
+PYTEST        := $(PYTHON) -m pytest
+PIP           := $(PYTHON) -m pip
+BLACK         := $(PYTHON) -m black
+FLAKE8        := $(PYTHON) -m flake8
 SRC      := backend
 TESTS    := tests
 COV_MIN  := 70
@@ -24,7 +26,8 @@ help: ## Show available targets
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
 # ── Setup ──────────────────────────────────────────────────────────────────────
-install: ## Install runtime + dev dependencies
+install: ## Create .venv (if needed) and install runtime + dev dependencies
+	@test -f $(PYTHON) || $(SYSTEM_PYTHON) -m venv $(VENV)
 	$(PIP) install -r requirements.txt -r requirements-dev.txt
 
 hooks: ## Install pre-commit hooks (run once after clone)
@@ -33,10 +36,10 @@ hooks: ## Install pre-commit hooks (run once after clone)
 # ── Local dev ──────────────────────────────────────────────────────────────────
 backend: ## Start backend dev server on :8000 (requires ANTHROPIC_API_KEY)
 	@test -n "$(ANTHROPIC_API_KEY)" || (echo "Error: ANTHROPIC_API_KEY is not set"; exit 1)
-	cd $(SRC) && uvicorn main:app --reload --port 8000
+	cd $(SRC) && ../$(PYTHON) -m uvicorn main:app --reload --port 8000
 
 frontend: ## Start Streamlit frontend on :8501 (requires backend running)
-	cd frontend && streamlit run app.py
+	cd frontend && ../$(PYTHON) -m streamlit run app.py
 
 # ── Docker ─────────────────────────────────────────────────────────────────────
 up: ## Build and start all services via Docker Compose
@@ -77,9 +80,13 @@ check: ## Check formatting + linting without modifying files (same as CI)
 evals: ## Run keyword-match evals — fast, no API calls (backend must be running)
 	$(PYTHON) evals/run_evals.py --backend http://localhost:8000 --skip-ragas
 
-evals-full: ## Run full evals including Ragas (requires ANTHROPIC_API_KEY + backend)
-	@test -n "$(ANTHROPIC_API_KEY)" || (echo "Error: ANTHROPIC_API_KEY is not set"; exit 1)
-	$(PYTHON) evals/run_evals.py --backend http://localhost:8000
+evals-full: ## Run full evals including Ragas. EVAL_LLM=huggingface uses HuggingFace instead of Anthropic
+	@if [ "$(EVAL_LLM)" = "huggingface" ]; then \
+		test -n "$(HUGGINGFACE_API_KEY)" || (echo "Error: HUGGINGFACE_API_KEY is not set"; exit 1); \
+	else \
+		test -n "$(ANTHROPIC_API_KEY)" || (echo "Error: ANTHROPIC_API_KEY is not set"; exit 1); \
+	fi
+	$(PYTHON) evals/run_evals.py --backend http://localhost:8000 --eval-llm $(or $(EVAL_LLM),anthropic)
 
 # ── Version ────────────────────────────────────────────────────────────────────
 version: ## Show current project version
