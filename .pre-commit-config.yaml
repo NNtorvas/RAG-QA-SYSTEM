@@ -28,7 +28,7 @@ repos:
     rev: v2.7.3
     hooks:
       - id: pip-audit
-        args: ["-r", "requirements.txt"]
+        args: ["-r", "requirements.txt", "--no-deps"]
         stages: [pre-push]
         files: ^requirements\.txt$
 
