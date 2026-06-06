@@ -122,8 +122,6 @@ Config is centralised in `pyproject.toml` (`[tool.black]`, `[tool.flake8]`, `[to
 - trailing-whitespace, end-of-file-fixer, check-yaml, check-added-large-files
 - Black auto-formats Python files
 - Flake8 lints (requires `flake8-pyproject` to read `pyproject.toml`)
-- `pip-audit` scans `requirements.txt` for known CVEs
-
 **Pre-push hook** (runs on `git push`):
 - `scripts/check_version_bump.py` — compares `backend/__version__.py` against the latest git tag and fails if the version was not bumped.
 

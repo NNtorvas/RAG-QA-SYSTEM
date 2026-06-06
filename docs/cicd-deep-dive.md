@@ -26,11 +26,10 @@ Developer machine                    GitHub
                    • formatting      │
                    • linting         │
                    • file hygiene    │
-                   • dep CVEs        │
                                      │
 [2] git push    →  pre-push hook     │
                    • version bump    │  [3] GitHub Actions
-                   • pip-audit       ├──→  cd.yml (orchestrator)
+                                    ├──→  cd.yml (orchestrator)
                                      │       └─ _prep.yml
                                      │            • extract version
                                      │            • validate semver
@@ -127,26 +126,6 @@ this is the standard set of ignores for Black + Flake8 co-existence.
 
 Two hooks are pinned to `stages: [pre-push]`, meaning they only fire when pushing, not
 on every commit (they are too slow or too semantic to run on each save).
-
-#### pip-audit (dependency CVE scanner)
-
-```yaml
-- repo: https://github.com/pypa/pip-audit
-  rev: v2.7.3
-  hooks:
-    - id: pip-audit
-      args: ["-r", "requirements.txt"]
-      stages: [pre-push]
-      files: ^requirements\.txt$
-```
-
-`files: ^requirements\.txt$` means this hook **only runs when `requirements.txt` was
-modified in the push**. Adding a new dependency is the exact moment a CVE scan is
-valuable. Running it on every push regardless would waste 5–15 seconds on commits that
-didn't touch dependencies.
-
-`pip-audit` queries the OSV (Open Source Vulnerabilities) database and the PyPI Advisory
-database. If a package in `requirements.txt` has a known CVE, the push is blocked.
 
 #### Version bump check
 
@@ -624,7 +603,6 @@ git push origin main
 Pre-push hooks fire:
 
 ```
-pip-audit..............................................Skipped  (requirements.txt not changed)
 Version bump check.....................................Passed
   [version-gate] OK: 0.5.0 -> 0.6.0
 ```
@@ -723,7 +701,6 @@ and pushes using the registry cache.
 | Committing code with lint errors | Flake8 (pre-commit) |
 | Committing trailing whitespace | pre-commit-hooks (pre-commit) |
 | Accidentally committing a 200 MB model file | check-added-large-files (pre-commit) |
-| Adding a dependency with a known CVE | pip-audit (pre-push) |
 | Pushing to main without bumping version | check_version_bump.py (pre-push) + _prep.yml (remote) |
 | Bypassing local hooks with `--no-verify` | _prep.yml semver check (remote, cannot be bypassed) |
 | Losing track of which commit maps to which image | SHA tag on every image |

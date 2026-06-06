@@ -62,7 +62,7 @@ This project demonstrates the following production AI/ML engineering skills:
 | **Containerization** | Multi-service Docker Compose with volume persistence, health checks, and env-variable secrets |
 | **Testing** | 34-test suite across unit and integration layers; all external dependencies mocked |
 | **CI/CD** | 3-layer GitHub Actions CD pipeline: semver gate → Docker build → GHCR push |
-| **Code quality** | pre-commit hooks (Black, Flake8, pip-audit), pyproject.toml central config, coverage enforcement |
+| **Code quality** | pre-commit hooks (Black, Flake8), pyproject.toml central config, coverage enforcement |
 | **Error handling** | Graceful fallbacks at both retrieval and LLM layers; clear error messages to the user |
 
 ---

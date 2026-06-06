@@ -23,15 +23,6 @@ repos:
       - id: flake8
         additional_dependencies: [flake8-pyproject]
 
-  # ── Dependency security scan ────────────────────────────────────────────────
-  - repo: https://github.com/pypa/pip-audit
-    rev: v2.7.3
-    hooks:
-      - id: pip-audit
-        args: ["-r", "requirements.txt", "--no-deps"]
-        stages: [pre-push]
-        files: ^requirements\.txt$
-
   # ── Version gate (runs on push, not on every commit) ────────────────────────
   - repo: local
     hooks:

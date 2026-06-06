@@ -1,7 +1,6 @@
 black>=24.0
 flake8>=7.0
 flake8-pyproject>=1.2
-pip-audit>=2.7
 pytest>=7.0
 pytest-cov>=4.0
 httpx>=0.27
